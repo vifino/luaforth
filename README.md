@@ -14,9 +14,11 @@ This is made for people who want to embed a Forth-like into their project.
 
 3. Call `luaforth.eval(program_source, environment)`.
 
+Tada!
+
 # Example
 
-See `luaforth.simple_env` in `luaforth.lua` or below.
+See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L119-L150) or below.
 
 ```lua
 -- Example env that has %L to evaluate the line, [L L] pairs to evalute a small block of lua code and...
@@ -51,6 +53,27 @@ luaforth.simple_env[":"] = {
 	_parse = "endsign",
 	_endsign = ";"
 }
+```
+
+# Environment
+
+Contains words, strings, booleans, numbers and other things that the forth instance will be able to use.
+
+## Word Structure
+
+Words are Forth jargon for functions.
+
+Look [here](ihttps://github.com/vifino/luaforth/blob/master/luaforth.lua#L7-L14) or below to see how they are structured in this implementation.
+
+```lua
+-- Word structure:
+-- env[name] = {
+--	_fn = func -- function that runs the logic
+--	_args = n -- number of arguments which are pop'd from the stack, defaults to 0
+--	_parse = ["line"|"word"|"endsign"|"pattern"] -- optional advanced parsing, line passes the whole line to the word, word only the next word, pattern parses given pattern, endsign until...
+--	_endsign = string -- the given endsign appears.
+--	_pattern = pattern -- pattern for parse option
+-- }
 ```
 
 # License

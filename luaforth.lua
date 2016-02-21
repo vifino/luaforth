@@ -100,8 +100,6 @@ function luaforth.eval(src, env, stack, startpos)
 					end
 				elseif word_type == "number" or word_type == "boolean" then
 					push(word_value)
-				else
-					error("Invalid type of word in environment: "..word_name, 0)
 				end
 			else
 				local tonword = tonumber(word)
