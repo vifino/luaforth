@@ -7,6 +7,7 @@ local luaforth = {}
 -- Word structure:
 -- env[name] = {
 --	_fn = func -- function that runs the logic
+--	_fnret = ["pushtostack", "newstack"] -- wether the function's return values should be added to the stack or _be_ the stack. Defaults to pushtostack.
 --	_args = n -- number of arguments which are pop'd from the stack, defaults to 0
 --	_parse = ["line"|"word"|"endsign"|"pattern"] -- optional advanced parsing, line passes the whole line to the word, word only the next word, pattern parses given pattern, endsign until...
 --	_endsign = string -- the given endsign appears.
@@ -78,7 +79,7 @@ function luaforth.eval(src, env, stack, startpos)
 						local pt = word_value._parse
 						if pt then -- not just plain word
 							parse_spaces()
-							local extra 
+							local extra
 							if pt == "line" then
 								extra = parse_rest_of_line()
 							elseif pt == "word" then
@@ -91,11 +92,20 @@ function luaforth.eval(src, env, stack, startpos)
 							args[#args + 1] = extra
 						end
 
+						local rt = word_value._fnret
 						local ra = {f(unpack(args))}
-						for i=1, #ra, 1 do
-							local e = ra[i]
-							if e then
-								push(e)
+						if rt == "newstack" then
+							stack = ra[1]
+							local nenv = ra[2]
+							if nenv then
+								env = nenv
+							end
+						else
+							for i=1, #ra, 1 do
+								local e = ra[i]
+								if e then
+									push(e)
+								end
 							end
 						end
 					else
@@ -110,27 +120,39 @@ function luaforth.eval(src, env, stack, startpos)
 					push(tonword)
 				else
 						error("No such word: "..word_name, 0)
-				end
+					end
 			end
 		else
-			return unpack(stack)
+			return stack, env
 		end
 	end
-	return unpack(stack)
+	return stack, env
 end
 
 -- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
 luaforth.simple_env = {
 	["%L"] = {
 		_fn=function(stack, env, str)
-			local f = loadstring(str)
+			local f, err = loadstring("return " .. str)
+			if err then
+				f, err = loadstring(str)
+				if err then
+					error(err, 0)
+				end
+			end
 			return f()
 		end,
 		_parse = "line"
 	},
 	["[L"] = {
 		_fn=function(stack, env, str)
-			local f = loadstring(str)
+			local f, err = loadstring("return " .. str)
+			if err then
+				f, err = loadstring(str)
+				if err then
+					error(err, 0)
+				end
+			end
 			return f()
 		end,
 		_parse = "endsign",
@@ -145,7 +167,8 @@ luaforth.simple_env[":"] = {
 		luaforth.simple_env[nme] = {
 			_fn = function(stack, env)
 				return luaforth.eval(prg, env, stack)
-			end
+			end,
+			_fnret = "newstack"
 		}
 	end,
 	_parse = "endsign",

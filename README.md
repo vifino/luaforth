@@ -12,27 +12,39 @@ This is made for people who want to embed a Forth-like into their project.
 
 2. Create an environment.
 
-3. Call `luaforth.eval(program_source, environment)`.
+3. Call `stack, new_environment = luaforth.eval(program_source, environment)`.
 
 Tada!
 
 # Example
 
-See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L119-L150) or below.
+See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L132-L766) or below.
 
 ```lua
--- Example env that has %L to evaluate the line, [L L] pairs to evalute a small block of lua code and...
+-- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
 luaforth.simple_env = {
 	["%L"] = {
 		_fn=function(stack, env, str)
-			local f = loadstring(str)
+			local f, err = loadstring("return " .. str)
+			if err then
+				f, err = loadstring(str)
+				if err then
+					error(err, 0)
+				end
+			end
 			return f()
 		end,
 		_parse = "line"
 	},
 	["[L"] = {
 		_fn=function(stack, env, str)
-			local f = loadstring(str)
+			local f, err = loadstring("return " .. str)
+			if err then
+				f, err = loadstring(str)
+				if err then
+					error(err, 0)
+				end
+			end
 			return f()
 		end,
 		_parse = "endsign",
@@ -40,14 +52,15 @@ luaforth.simple_env = {
 	}
 }
 
--- function creation!
+-- Function creation.
 luaforth.simple_env[":"] = {
 	_fn = function(stack, env, fn)
 		local nme, prg = string.match(fn, "^(.-) (.-)$")
 		luaforth.simple_env[nme] = {
 			_fn = function(stack, env)
 				return luaforth.eval(prg, env, stack)
-			end
+			end,
+			_fnret = "newstack"
 		}
 	end,
 	_parse = "endsign",
@@ -63,16 +76,17 @@ Contains words, strings, booleans, numbers and other things that the forth insta
 
 Words are Forth jargon for functions.
 
-Look [here](ihttps://github.com/vifino/luaforth/blob/master/luaforth.lua#L7-L14) or below to see how they are structured in this implementation.
+Look [here](ihttps://github.com/vifino/luaforth/blob/master/luaforth.lua#L7-L15) or below to see how they are structured in this implementation.
 
 ```lua
 -- Word structure:
 -- env[name] = {
---	_fn = func -- function that runs the logic
---	_args = n -- number of arguments which are pop'd from the stack, defaults to 0
---	_parse = ["line"|"word"|"endsign"|"pattern"] -- optional advanced parsing, line passes the whole line to the word, word only the next word, pattern parses given pattern, endsign until...
---	_endsign = string -- the given endsign appears.
---	_pattern = pattern -- pattern for parse option
+--  _fn = func -- function that runs the logic
+--  _fnret = ["pushtostack", "newstack"] -- wether the function's return values should be added to the stack or _be_ the stack. Defaults to pushtostack.
+--  _args = n -- number of arguments which are pop'd from the stack, defaults to 0
+--  _parse = ["line"|"word"|"endsign"|"pattern"] -- optional advanced parsing, line passes the whole line to the word, word only the next word, pattern parses given pattern, endsign until...
+--  _endsign = string -- the given endsign appears.
+--  _pattern = pattern -- pattern for parse option
 -- }
 ```
 
