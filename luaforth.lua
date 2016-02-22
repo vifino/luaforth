@@ -111,7 +111,7 @@ function luaforth.eval(src, env, stack, startpos)
 					else
 						push(word_value)
 					end
-				elseif word_type == "number" or word_type == "boolean" then
+				else
 					push(word_value)
 				end
 			else
