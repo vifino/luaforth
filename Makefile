@@ -1,8 +1,6 @@
 # LuaForth Makefile
 
-TESTS=$(wildcard tests/*.lua)
-
-test: ${TESTS}
+test: tests
 	busted $<
 
 lint: luaforth.lua
