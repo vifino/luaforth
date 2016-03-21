@@ -31,7 +31,7 @@ function luaforth.eval(src, env, stack, startpos)
 	local pos = startpos or 1
 
 
-	local stack = stack or {}
+	stack = stack or {}
 	local function pop()
 		if #stack == 0 then error("Stack underflow!") end
 		return tremove(stack)
@@ -56,13 +56,9 @@ function luaforth.eval(src, env, stack, startpos)
 			return capture
 		end
 	end
-	local parse_spaces          = genpattparse("^([ \t]*)()")
-	local parse_word            = genpattparse("^([^ \t\r\n]+)()")
-	local parse_newline         = genpattparse("^([\r\n])()")
-	local parse_rest_of_line    = genpattparse("^(.-)[\r\n]()")
-	local parse_word_or_newline = function() return parse_word() or parse_newline() end
-	local get_word              = function() parse_spaces(); return parse_word() end
-	local get_word_or_newline   = function() parse_spaces(); return parse_word_or_newline() end
+	local parse_spaces = genpattparse("^([ \t]*)()")
+	local parse_word   = genpattparse("^([^ \t\r\n]+)()")
+	local parse_eol    = genpattparse("^(.-)[\r\n]()")
 
 	while src ~= "" do
 		parse_spaces()
@@ -84,7 +80,7 @@ function luaforth.eval(src, env, stack, startpos)
 							parse_spaces()
 							local extra
 							if pt == "line" then
-								extra = parse_rest_of_line()
+								extra = parse_eol()
 							elseif pt == "word" then
 								extra = parse_word()
 							elseif pt == "pattern" then
@@ -118,7 +114,7 @@ function luaforth.eval(src, env, stack, startpos)
 					push(word_value)
 				end
 			else
-				local tonword = tonumber(word)
+				local tonword = tonumber(word_name)
 				if tonword then
 					push(tonword)
 				else
@@ -135,7 +131,7 @@ end
 -- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
 luaforth.simple_env = {
 	["%L"] = {
-		_fn=function(stack, env, str)
+		_fn=function(_, _, str)
 			local f, err = loadstring("return " .. str)
 			if err then
 				f, err = loadstring(str)
@@ -148,7 +144,7 @@ luaforth.simple_env = {
 		_parse = "line"
 	},
 	["[L"] = {
-		_fn=function(stack, env, str)
+		_fn=function(_, _, str)
 			local f, err = loadstring("return " .. str)
 			if err then
 				f, err = loadstring(str)
@@ -165,7 +161,7 @@ luaforth.simple_env = {
 
 -- Function creation.
 luaforth.simple_env[":"] = {
-	_fn = function(stack, env, fn)
+	_fn = function(_, _, fn)
 		local nme, prg = string.match(fn, "^(.-) (.-)$")
 		luaforth.simple_env[nme] = {
 			_fn = function(stack, env)
