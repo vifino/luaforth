@@ -14,6 +14,12 @@ local luaforth = {}
 --	_pattern = pattern -- pattern for parse option
 -- }
 
+-- Method caching, should be a little faster because no global lookup.
+local unpack = table.unpack or unpack
+local tremove = table.remove
+local smatch = string.match
+local type, error = type, error
+
 function luaforth.eval(src, env, stack, startpos)
 	if src == "" then
 		return stack, startpos
@@ -22,21 +28,13 @@ function luaforth.eval(src, env, stack, startpos)
 	-- Small fix.
 	src = src .. "\n"
 
-	-- Method caching, should be a little faster because no global lookup.
-	local unpack = table.unpack or unpack
-	local tremove = table.remove
-	local smatch = string.match
 	local pos = startpos or 1
 
 
 	local stack = stack or {}
 	local function pop()
-		local s, r = pcall(tremove, stack, #stack)
-		if s then
-			return r
-		else
-			error("Stack underflow!")
-		end
+		if #stack == 0 then error("Stack underflow!") end
+		return tremove(stack)
 	end
 	local function push(x)
 		stack[#stack + 1] = x
@@ -124,8 +122,8 @@ function luaforth.eval(src, env, stack, startpos)
 				if tonword then
 					push(tonword)
 				else
-						error("No such word: "..word_name, 0)
-					end
+					error("No such word: "..word_name, 0)
+				end
 			end
 		else
 			return stack, env
