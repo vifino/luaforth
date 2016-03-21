@@ -15,6 +15,13 @@ local luaforth = {}
 -- }
 
 function luaforth.eval(src, env, stack, startpos)
+	if src == "" then
+		return stack, startpos
+	end
+
+	-- Small fix.
+	src = src .. "\n"
+
 	-- Method caching, should be a little faster because no global lookup.
 	local unpack = table.unpack or unpack
 	local tremove = table.remove
@@ -24,7 +31,7 @@ function luaforth.eval(src, env, stack, startpos)
 
 	local stack = stack or {}
 	local function pop()
-		local s, r pcall(tremove, stack, #stack)
+		local s, r = pcall(tremove, stack, #stack)
 		if s then
 			return r
 		else
@@ -52,12 +59,12 @@ function luaforth.eval(src, env, stack, startpos)
 		end
 	end
 	local parse_spaces          = genpattparse("^([ \t]*)()")
-	local parse_word            = genpattparse("^([^ \t\n]+)()")
-	local parse_newline         = genpattparse("^(\n)()")
-	local parse_rest_of_line    = genpattparse("^([^\n]*)()")
-	local parse_word_or_newline = function () return parse_word() or parse_newline() end
-	local get_word              = function () parse_spaces(); return parse_word() end
-	local get_word_or_newline   = function () parse_spaces(); return parse_word_or_newline() end
+	local parse_word            = genpattparse("^([^ \t\r\n]+)()")
+	local parse_newline         = genpattparse("^([\r\n])()")
+	local parse_rest_of_line    = genpattparse("^(.-)[\r\n]()")
+	local parse_word_or_newline = function() return parse_word() or parse_newline() end
+	local get_word              = function() parse_spaces(); return parse_word() end
+	local get_word_or_newline   = function() parse_spaces(); return parse_word_or_newline() end
 
 	while src ~= "" do
 		parse_spaces()
@@ -70,9 +77,7 @@ function luaforth.eval(src, env, stack, startpos)
 					local f = word_value._fn
 					if type(f) == "function" then
 						local argn = word_value._args or 0
-						local args = {}
-						args[1] = stack
-						args[2] = env
+						local args = {stack, env}
 						for i=1, argn, 1 do
 							args[i+2] = pop()
 						end
