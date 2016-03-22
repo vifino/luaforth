@@ -4,6 +4,9 @@
 
 local luaforth = {}
 
+-- Version
+luaforth.version = "0.1"
+
 -- Word structure:
 -- env[name] = {
 --	_fn = func -- function that runs the logic
@@ -21,7 +24,7 @@ local smatch = string.match
 local type, error = type, error
 
 function luaforth.eval(src, env, stack, startpos)
-	if src == "" then
+	if src == "" then -- Short cut in case of src being empty
 		return stack, startpos
 	end
 
@@ -31,6 +34,7 @@ function luaforth.eval(src, env, stack, startpos)
 	local pos = startpos or 1
 
 
+	-- Stack
 	stack = stack or {}
 	local function pop()
 		if #stack == 0 then error("Stack underflow!") end
@@ -40,6 +44,7 @@ function luaforth.eval(src, env, stack, startpos)
 		stack[#stack + 1] = x
 	end
 
+	-- Patterns and stuff for the parser
 	local genpattparse = function(pat)
 		return function()
 			local capture, newpos = smatch(src, pat, pos)
@@ -58,14 +63,14 @@ function luaforth.eval(src, env, stack, startpos)
 	end
 	local parse_spaces = genpattparse("^([ \t]*)()")
 	local parse_word   = genpattparse("^([^ \t\r\n]+)()")
-	local parse_eol    = genpattparse("^(.-)[\r\n]()")
+	local parse_eol    = genpattparse("^(.-)[\r\n]+()")
 
-	while src ~= "" do
+	while src ~= "" do -- Main loop
 		parse_spaces()
 		local word_name = parse_word()
 		if word_name then
 			local word_value = env[word_name]
-			if word_value then
+			if word_value then -- if the word is in the env
 				local word_type = type(word_value)
 				if word_type == "table" then -- word
 					local f = word_value._fn
@@ -114,7 +119,7 @@ function luaforth.eval(src, env, stack, startpos)
 					push(word_value)
 				end
 			else
-				local tonword = tonumber(word_name)
+				local tonword = tonumber(word_name) -- fallback for numbers.
 				if tonword then
 					push(tonword)
 				else
@@ -130,8 +135,8 @@ end
 
 -- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
 luaforth.simple_env = {
-	["%L"] = {
-		_fn=function(_, _, str)
+	["%L"] = { -- line of lua source
+		_fn=function(stack, env, str)
 			local f, err = loadstring("return " .. str)
 			if err then
 				f, err = loadstring(str)
@@ -139,12 +144,12 @@ luaforth.simple_env = {
 					error(err, 0)
 				end
 			end
-			return f()
+			return f(stack, env)
 		end,
 		_parse = "line"
 	},
-	["[L"] = {
-		_fn=function(_, _, str)
+	["[L"] = { -- same as above, but not the whole line
+		_fn=function(stack, env, str)
 			local f, err = loadstring("return " .. str)
 			if err then
 				f, err = loadstring(str)
@@ -152,15 +157,24 @@ luaforth.simple_env = {
 					error(err, 0)
 				end
 			end
-			return f()
+			return f(stack, env)
 		end,
 		_parse = "endsign",
 		_endsign = "L]"
+	},
+	["("] = { -- Comment.
+		_fn=function() end, -- Do... Nothing!
+		_parse = "endsign",
+		_endsign = ")"
+	},
+	["\\"] = {
+		_fn=function() end, -- Do nothing once again. Man, I wish I could be as lazy as that function.
+		_parse = "line"
 	}
 }
 
 -- Function creation.
-luaforth.simple_env[":"] = {
+luaforth.simple_env[":"] = { -- word definiton, arguebly the most interesting part of this env.
 	_fn = function(_, _, fn)
 		local nme, prg = string.match(fn, "^(.-) (.-)$")
 		luaforth.simple_env[nme] = {
