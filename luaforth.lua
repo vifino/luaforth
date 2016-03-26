@@ -77,9 +77,6 @@ function luaforth.eval(src, env, stack, startpos)
 					if type(f) == "function" then
 						local argn = word_value._args or 0
 						local args = {stack, env}
-						for i=1, argn, 1 do
-							args[i+2] = pop()
-						end
 						local pt = word_value._parse
 						if pt then -- not just plain word
 							parse_spaces()
@@ -94,6 +91,9 @@ function luaforth.eval(src, env, stack, startpos)
 								extra = pattparse("^(.-)"..word_value._endsign:gsub(".", "%%%1").."()")
 							end
 							args[#args + 1] = extra
+						end
+						for i=1, argn, 1 do
+							args[i+2] = pop()
 						end
 
 						local rt = word_value._fnret
