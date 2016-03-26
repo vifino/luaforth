@@ -2,35 +2,47 @@
 -- small repl kinda thing for luaforth
 local luaforth = require("luaforth")
 
-print("LuaForth "..luaforth.version)
-print("Type 'exit' to exit.\n")
+if #arg == 0 then
+	-- REPL
+	print("LuaForth "..luaforth.version)
+	print("Type 'exit' to exit.\n")
 
-local function readline(prompt)
-	if linenoise then -- running in carbon
-		local line, err = linenoise.line(prompt)
-		if err then return nil end
-		linenoise.addHistory(line)
-		return line
-	else
-		io.stdout:write(prompt)
-		return io.stdin:read"*line"
-	end
-end
-
-local stack
-local env = luaforth.simple_env
-while true do
-	local src = readline("=> ")
-	if src == "exit" then
-		break
-	elseif src then
-		success, new_stack, new_env = pcall(luaforth.eval, src, env, stack) -- eval, putting the resulting stack and env in a new variable
-		if not success then
-			print(new_stack) -- actually error on failure
+	local function readline(prompt)
+		if linenoise then -- running in carbon
+			local line, err = linenoise.line(prompt)
+			if err then return nil end
+			linenoise.addHistory(line)
+			return line
 		else
-			stack, env = new_stack or stack, new_env or env -- if it succeeded in executing the source, replace
+			io.stdout:write(prompt)
+			return io.stdin:read"*line"
 		end
-	else
-		break
 	end
+
+	local stack
+	local env = luaforth.simple_env
+	while true do
+		local src = readline("=> ")
+		if src == "exit" then
+			break
+		elseif src then
+			success, new_stack, new_env = pcall(luaforth.eval, src, env, stack) -- eval, putting the resulting stack and env in a new variable
+			if not success then
+				print(new_stack) -- actually error on failure
+			else
+				stack, env = new_stack or stack, new_env or env -- if it succeeded in executing the source, replace
+			end
+		else
+			break
+		end
+	end
+else
+	-- Load file.
+	local f, err = io.open(arg[1], "r")
+	if err then
+		error(err, 0)
+	end
+	local src = f:read("*all")
+	f:close()
+	luaforth.eval(src, luaforth.simple_env)
 end

@@ -5,7 +5,7 @@
 local luaforth = {}
 
 -- Version
-luaforth.version = "0.2"
+luaforth.version = "0.3"
 
 -- Word structure:
 -- env[name] = {
@@ -169,6 +169,32 @@ luaforth.simple_env = {
 	},
 	["\\"] = {
 		_fn=function() end, -- Do nothing once again. Man, I wish I could be as lazy as that function.
+		_parse = "line"
+	},
+	["source"] = { -- source file
+		_fn=function(stack, env, loc)
+			local f, err = io.open(loc, "r")
+			if err then
+				error(err, 0)
+			end
+			local src = f:read("*all")
+			f:close()
+			return luaforth.eval(src, env, stack)
+		end,
+		_args = 1,
+		_fnret = "newstack"
+	},
+	["%source"] = { -- shortcut. allows "%source bla.fs\n" syntax.
+		_fn=function(stack, env, loc)
+			local f, err = io.open(loc, "r")
+			if err then
+				error(err, 0)
+			end
+			local src = f:read("*all")
+			f:close()
+			return luaforth.eval(src, env, stack)
+		end,
+		_fnret = "newstack",
 		_parse = "line"
 	}
 }
