@@ -187,5 +187,27 @@ luaforth.simple_env[":"] = { -- word definiton, arguebly the most interesting pa
 	_parse = "endsign",
 	_endsign = ";"
 }
+luaforth.simple_env[":[L"] = { -- word definition using lua!
+	_fn = function(stack, env, fn)
+		local nme, argno, prg = string.match(fn, "^(.-) (%d-) (.-)$")
+		local f, err = loadstring("return " .. prg) -- this is to get the "invisible return" action going.
+		if err then
+			f, err = loadstring(prg)
+			if err then
+				error(err, 0)
+			end
+		end
+		env[nme] = {
+			_fn=function(_, _, ...)
+				return f(...)
+			end,
+			_args=tonumber(argno)
+		}
+		return stack, env
+	end,
+	_parse = "endsign",
+	_endsign = "L];",
+	_fnret = "newstack" -- to switch out stack and more importantly env
+}
 
 return luaforth
