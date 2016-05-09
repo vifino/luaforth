@@ -1,4 +1,5 @@
 # luaforth
+[![Build Status](https://travis-ci.org/vifino/luaforth.svg?branch=master)](https://travis-ci.org/vifino/luaforth) [![Coverage Status](https://coveralls.io/repos/github/vifino/luaforth/badge.svg?branch=master)](https://coveralls.io/github/vifino/luaforth?branch=master)
 
 A simplistic and decently fast base implementation of a Forth parser.
 
@@ -12,16 +13,16 @@ This is made for people who want to embed a Forth-like into their project.
 
 2. Create an environment.
 
-3. Call `stack, new_environment = luaforth.eval(program_source, environment)`.
+3. Call `new_stack, new_environment = luaforth.eval(program_source, environment[, stack, program_source_start_position])`.
 
 Tada!
 
 # Example
 
-See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L232-L266) or below.
+See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L169-L277) or below.
 
 ```lua
--- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
+-- Example env that has %L to evaluate the line and [L L] pairs to evaluate a small block of Lua code.
 local simple_env = {
 	["%L"] = {
 		_fn=function(stack, env, str)

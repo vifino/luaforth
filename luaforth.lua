@@ -71,6 +71,7 @@ local parse_spaces = genpattparse("^([ \t]*)()")
 local parse_word   = genpattparse("^([^ \t\r\n]+)()")
 local parse_eol    = genpattparse("^(.-)[\r\n]+()")
 
+-- parser
 function luaforth.eval(src, env, stack, startpos)
 	local pos = startpos or 1
 	src = src or ""
@@ -86,7 +87,7 @@ function luaforth.eval(src, env, stack, startpos)
 	-- Stack
 	stack = stack or {}
 	local function pop()
-		if #stack == 0 then error("Stack underflow!") end
+		if #stack == 0 then error("Stack underflow!", 0) end
 		return tremove(stack)
 	end
 	local function push(x)
@@ -118,6 +119,9 @@ function luaforth.eval(src, env, stack, startpos)
 								pos, extra = pattparse(src, pos, "^"..word_value._pattern.."()")
 							elseif pt == "endsign" then
 								pos, extra = pattparse(src, pos, "^(.-)"..word_value._endsign:gsub(".", "%%%1").."()")
+							end
+							if not extra then
+								error("Failed finding requested "..pt.. " as word argument.", 0)
 							end
 							args[#args + 1] = extra
 						end
@@ -162,7 +166,7 @@ function luaforth.eval(src, env, stack, startpos)
 	return stack, env
 end
 
--- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
+-- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of Lua code.
 luaforth.simple_env = {
 	["%L"] = { -- line of lua source
 		_fn=function(stack, env, str)
@@ -190,6 +194,13 @@ luaforth.simple_env = {
 		end,
 		_parse = "endsign",
 		_endsign = "L]"
+	},
+	["s'"] = { -- VERY simple strings, with no way of escaping.
+		_fn = function(stack, env, str)
+			return str
+		end,
+		_parse = "endsign",
+		_endsign = "'"
 	},
 	["("] = { -- Comment.
 		_fn=function() end, -- Do... Nothing!
@@ -229,7 +240,7 @@ luaforth.simple_env = {
 }
 
 -- Function creation.
-luaforth.simple_env[":"] = { -- word definiton, arguebly the most interesting part of this env.
+luaforth.simple_env[":"] = { -- word definition, arguably the most interesting part of this env.
 	_fn = function(_, _, fn)
 		local nme, prg = string.match(fn, "^(.-) (.-)$")
 		luaforth.simple_env[nme] = {
