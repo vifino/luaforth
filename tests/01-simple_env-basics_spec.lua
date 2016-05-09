@@ -1,7 +1,4 @@
 describe("LuaForth", function()
-	it("should not have syntax errors in it's code.", function()
-		assert.truthy(pcall(require, "luaforth"))
-	end)
 	describe("should, when given simple_env, be able to", function()
 		local luaforth = require("luaforth")
 		describe("use [L and L] to", function()

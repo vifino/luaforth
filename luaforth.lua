@@ -47,16 +47,41 @@ local smatch = string.match
 local type, error = type, error
 local load = loadstring or load
 
+
+-- Patterns and stuff for the parser
+local genpattparse = function(pat)
+	return function(src, pos)
+		local capture, newpos = smatch(src, pat, pos)
+		if newpos then
+			return newpos, capture
+		else
+			return pos
+		end
+	end
+end
+local pattparse = function(src, pos, pat)
+	local capture, newpos = smatch(src, pat, pos)
+	if newpos then
+		return newpos, capture
+	else
+		return pos
+	end
+end
+local parse_spaces = genpattparse("^([ \t]*)()")
+local parse_word   = genpattparse("^([^ \t\r\n]+)()")
+local parse_eol    = genpattparse("^(.-)[\r\n]+()")
+
 function luaforth.eval(src, env, stack, startpos)
+	local pos = startpos or 1
+	src = src or ""
+	stack = stack or {}
+
 	if src == "" then -- Short cut in case of src being empty
 		return stack, startpos
 	end
 
 	-- Small fix.
 	src = src .. "\n"
-
-	local pos = startpos or 1
-
 
 	-- Stack
 	stack = stack or {}
@@ -68,30 +93,10 @@ function luaforth.eval(src, env, stack, startpos)
 		stack[#stack + 1] = x
 	end
 
-	-- Patterns and stuff for the parser
-	local genpattparse = function(pat)
-		return function()
-			local capture, newpos = smatch(src, pat, pos)
-			if newpos then
-				pos = newpos
-				return capture
-			end
-		end
-	end
-	local pattparse = function(pat)
-		local capture, newpos = smatch(src, pat, pos)
-		if newpos then
-			pos = newpos
-			return capture
-		end
-	end
-	local parse_spaces = genpattparse("^([ \t]*)()")
-	local parse_word   = genpattparse("^([^ \t\r\n]+)()")
-	local parse_eol    = genpattparse("^(.-)[\r\n]+()")
-
 	while src ~= "" do -- Main loop
-		parse_spaces()
-		local word_name = parse_word()
+		pos = parse_spaces(src, pos)
+		local word_name
+		pos, word_name = parse_word(src, pos)
 		if word_name then
 			local word_value = env[word_name]
 			if word_value then -- if the word is in the env
@@ -103,16 +108,16 @@ function luaforth.eval(src, env, stack, startpos)
 						local args = {stack, env}
 						local pt = word_value._parse
 						if pt then -- not just plain word
-							parse_spaces()
+							pos = parse_spaces(src, pos)
 							local extra
 							if pt == "line" then
-								extra = parse_eol()
+								pos, extra = parse_eol(src, pos)
 							elseif pt == "word" then
-								extra = parse_word()
+								pos, extra = parse_word(src, pos)
 							elseif pt == "pattern" then
-								extra = pattparse("^"..word_value._pattern.."()")
+								pos, extra = pattparse(src, pos, "^"..word_value._pattern.."()")
 							elseif pt == "endsign" then
-								extra = pattparse("^(.-)"..word_value._endsign:gsub(".", "%%%1").."()")
+								pos, extra = pattparse(src, pos, "^(.-)"..word_value._endsign:gsub(".", "%%%1").."()")
 							end
 							args[#args + 1] = extra
 						end
