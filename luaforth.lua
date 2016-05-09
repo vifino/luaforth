@@ -28,7 +28,7 @@
 local luaforth = {}
 
 -- Version
-luaforth.version = "0.4"
+luaforth.version = "0.3.1"
 
 -- Word structure:
 -- env[name] = {
@@ -196,7 +196,7 @@ luaforth.simple_env = {
 		_endsign = "L]"
 	},
 	["s'"] = { -- VERY simple strings, with no way of escaping.
-		_fn = function(stack, env, str)
+		_fn = function(_, _, str)
 			return str
 		end,
 		_parse = "endsign",

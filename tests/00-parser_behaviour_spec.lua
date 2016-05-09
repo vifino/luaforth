@@ -13,7 +13,7 @@ describe("LuaForth", function()
 		it("error when it stack underflows", function()
 			local env = {
 				pop = {
-					_fn = function(stack, env, trash)
+					_fn = function()
 						-- do nothing! yay!
 					end,
 					_args = 1
