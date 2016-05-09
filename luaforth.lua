@@ -28,7 +28,7 @@
 local luaforth = {}
 
 -- Version
-luaforth.version = "0.3"
+luaforth.version = "0.4"
 
 -- Word structure:
 -- env[name] = {
