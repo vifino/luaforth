@@ -45,6 +45,7 @@ local unpack = table.unpack or unpack
 local tremove = table.remove
 local smatch = string.match
 local type, error = type, error
+local load = loadstring or load
 
 function luaforth.eval(src, env, stack, startpos)
 	if src == "" then -- Short cut in case of src being empty
@@ -160,9 +161,9 @@ end
 luaforth.simple_env = {
 	["%L"] = { -- line of lua source
 		_fn=function(stack, env, str)
-			local f, err = loadstring("return " .. str)
+			local f, err = load("return " .. str)
 			if err then
-				f, err = loadstring(str)
+				f, err = load(str)
 				if err then
 					error(err, 0)
 				end
@@ -173,9 +174,9 @@ luaforth.simple_env = {
 	},
 	["[L"] = { -- same as above, but not the whole line
 		_fn=function(stack, env, str)
-			local f, err = loadstring("return " .. str)
+			local f, err = load("return " .. str)
 			if err then
-				f, err = loadstring(str)
+				f, err = load(str)
 				if err then
 					error(err, 0)
 				end
@@ -239,9 +240,9 @@ luaforth.simple_env[":"] = { -- word definiton, arguebly the most interesting pa
 luaforth.simple_env[":[L"] = { -- word definition using lua!
 	_fn = function(stack, env, fn)
 		local nme, argno, prg = string.match(fn, "^(.-) (%d-) (.-)$")
-		local f, err = loadstring("return " .. prg) -- this is to get the "invisible return" action going.
+		local f, err = load("return " .. prg) -- this is to get the "invisible return" action going.
 		if err then
-			f, err = loadstring(prg)
+			f, err = load(prg)
 			if err then
 				error(err, 0)
 			end
