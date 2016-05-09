@@ -18,11 +18,11 @@ Tada!
 
 # Example
 
-See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L132-L766) or below.
+See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L136-L237) or below.
 
 ```lua
 -- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of lua code.
-luaforth.simple_env = {
+local simple_env = {
 	["%L"] = {
 		_fn=function(stack, env, str)
 			local f, err = loadstring("return " .. str)
@@ -76,7 +76,7 @@ Contains words, strings, booleans, numbers and other things that the forth insta
 
 Words are Forth jargon for functions.
 
-Look [here](ihttps://github.com/vifino/luaforth/blob/master/luaforth.lua#L7-L15) or below to see how they are structured in this implementation.
+Look [here](ihttps://github.com/vifino/luaforth/blob/master/luaforth.lua#L33-L41) or below to see how they are structured in this implementation.
 
 ```lua
 -- Word structure:
