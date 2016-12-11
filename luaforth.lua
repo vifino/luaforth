@@ -71,34 +71,28 @@ local parse_spaces = genpattparse("^([ \t]*)()")
 local parse_word   = genpattparse("^([^ \t\r\n]+)()")
 local parse_eol    = genpattparse("^(.-)[\r\n]+()")
 
+-- parser instruction types
+local parser_type_word = 1
+local parser_type_push = 2
+local parser_type_pop = 3
+local parser_type_runtime = 4
+
+luaforth.inst_type = {
+	"word",
+	"push",
+	"pop"
+}
+
 -- parser
-function luaforth.eval(src, env, stack, startpos)
-	local pos = startpos or 1
-	src = src or ""
-	stack = stack or {}
-
-	if src == "" then -- Short cut in case of src being empty
-		return stack, startpos
-	end
-
-	-- Small fix.
-	src = src .. "\n"
-
-	-- Stack
-	stack = stack or {}
-	local function pop()
-		if #stack == 0 then error("Stack underflow!", 0) end
-		return tremove(stack)
-	end
-	local function push(x)
-		stack[#stack + 1] = x
-	end
-
-	while src ~= "" do -- Main loop
-		pos = parse_spaces(src, pos)
-		local word_name
-		pos, word_name = parse_word(src, pos)
-		if word_name then
+function luaforth.parse_word(src, env, pos)
+	local instruction
+	pos = parse_spaces(src, pos or 1)
+	local word_name
+	pos, word_name = parse_word(src, pos)
+	if word_name then
+		if word_name == "pop" then
+			instruction = {t = parser_type_pop}
+		else
 			local word_value = env[word_name]
 			if word_value then -- if the word is in the env
 				local word_type = type(word_value)
@@ -106,11 +100,10 @@ function luaforth.eval(src, env, stack, startpos)
 					local f = word_value._fn
 					if type(f) == "function" then
 						local argn = word_value._args or 0
-						local args = {stack, env}
 						local pt = word_value._parse
+						local extra
 						if pt then -- not just plain word
 							pos = parse_spaces(src, pos)
-							local extra
 							if pt == "line" then
 								pos, extra = parse_eol(src, pos)
 							elseif pt == "word" then
@@ -123,47 +116,130 @@ function luaforth.eval(src, env, stack, startpos)
 							if not extra then
 								error("Failed finding requested "..pt.. " as word argument.", 0)
 							end
-							args[#args + 1] = extra
 						end
-						for i=1, argn, 1 do
-							args[i+2] = pop()
-						end
-
+						
 						local rt = word_value._fnret
-						local ra = {f(unpack(args))}
-						if rt == "newstack" then
-							stack = ra[1]
-							local nenv = ra[2]
-							if nenv then
-								env = nenv
-							end
-						else
-							for i=1, #ra, 1 do
-								local e = ra[i]
-								if e then
-									push(e)
-								end
-							end
-						end
+						instruction = {
+							t = parser_type_word,
+							extra = extra,
+							argn = argn,
+							fn = f,
+							rt = rt
+						}
 					else
-						push(word_value)
+						instruction = {
+							t = parser_type_push,
+							val = word_value,
+						}
 					end
 				else
-					push(word_value)
+					instruction = {
+						t = parser_type_push,
+						val = word_value,
+					}
 				end
 			else
 				local tonword = tonumber(word_name) -- fallback for numbers.
 				if tonword then
-					push(tonword)
+					instruction = {
+						t = parser_type_push,
+						val = tonword,
+					}
 				else
-					error("No such word: "..word_name, 0)
+					--error("No such word: "..word_name, 0)
+					instruction = {
+						t = parser_type_runtime,
+						name = word_name,
+					}
 				end
 			end
-		else
-			return stack, env
+		end
+	else
+		return nil, pos
+	end
+	return instruction, pos
+end
+
+function luaforth.parse(src, env, startpos)
+	local pos = startpos or 1
+	src = src or ""
+
+	if src == "" then -- Short cut in case of src being empty
+		return {}
+	end
+
+	-- Small fix.
+	src = src .. "\n"
+
+	-- instructions
+	local instructions = {}
+	local inst
+	local function push(x)
+		if x then
+			instructions[#instructions + 1] = x
 		end
 	end
+
+	while #src > pos do -- Main parser loop
+		inst, pos = luaforth.parse_word(src, env, pos)
+		push(inst)
+	end
+	return instructions
+end
+
+-- runner
+function luaforth.eval_inst(inst, env, stack)
+	local stack = stack or {}
+	if inst.t == parser_type_word then
+		local args = inst.extra and {inst.extra} or {}
+		for i=1, inst.argn, 1 do
+			if #stack == 0 then error("Stack underflow!", 0) end
+			args[#args+1] = tremove(stack)
+		end
+
+		local ra = {inst.fn(stack, env, unpack(args))}
+		if inst.rt == "newstack" then
+			stack = ra[1]
+			local nenv = ra[2]
+			if nenv then
+				env = nenv
+			end
+		else
+			for i=1, #ra, 1 do
+				local e = ra[i]
+				if e then
+					stack[#stack + 1] = e
+				end
+			end
+		end
+	elseif inst.t == parser_type_push then
+		stack[#stack + 1] = inst.val
+	elseif inst.t == parser_type_pop then
+		if #stack == 0 then error("Stack underflow!", 0) end
+		tremove(stack)
+	elseif inst.t == parser_type_runtime then -- look up at runtime
+		local new_inst = luaforth.parse_word(inst.name, env)
+		stack, env = luaforth.eval_inst(new_inst, env, stack)
+	end
 	return stack, env
+end
+
+function luaforth.eval_insts(insts, env, stack)
+	-- stack
+	local stack = stack or {}
+
+	local ipos = 1
+	while #insts >= ipos do
+		local inst = insts[ipos]
+		stack, env = luaforth.eval_inst(inst, env, stack)
+		ipos = ipos + 1
+	end
+	return stack, env
+end
+
+function luaforth.eval(src, env, stack, startpos)
+	local insts = luaforth.parse(src, env, startpos)
+	return luaforth.eval_insts(insts, env, stack)
 end
 
 -- Example env that has %L to evaluate the line and [L L] pairs to evalute a small block of Lua code.

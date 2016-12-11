@@ -19,7 +19,7 @@ Tada!
 
 # Example
 
-See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L169-L277) or below.
+See `luaforth.simple_env` [here](https://github.com/vifino/luaforth/blob/master/luaforth.lua#L246-L253) or below.
 
 ```lua
 -- Example env that has %L to evaluate the line and [L L] pairs to evaluate a small block of Lua code.
