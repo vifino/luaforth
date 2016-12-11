@@ -117,7 +117,7 @@ function luaforth.parse_word(src, env, pos)
 								error("Failed finding requested "..pt.. " as word argument.", 0)
 							end
 						end
-						
+
 						local rt = word_value._fnret
 						instruction = {
 							t = parser_type_word,
@@ -189,12 +189,12 @@ end
 
 -- runner
 function luaforth.eval_inst(inst, env, stack)
-	local stack = stack or {}
 	if inst.t == parser_type_word then
 		local args = inst.extra and {inst.extra} or {}
+		local args_offset = #args
 		for i=1, inst.argn, 1 do
 			if #stack == 0 then error("Stack underflow!", 0) end
-			args[#args+1] = tremove(stack)
+			args[i+args_offset] = tremove(stack)
 		end
 
 		local ra = {inst.fn(stack, env, unpack(args))}
@@ -226,7 +226,7 @@ end
 
 function luaforth.eval_insts(insts, env, stack)
 	-- stack
-	local stack = stack or {}
+	stack = stack or {}
 
 	local ipos = 1
 	while #insts >= ipos do
